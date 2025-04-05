@@ -10,8 +10,43 @@ import json
 from typing import List, Dict, Any, Tuple, Optional
 import os
 from datetime import datetime, timedelta
+# import matplotlib
+# matplotlib.use('Agg')  # 设置非交互式后端
+#
+# # 设置matplotlib中文字体
+# matplotlib.rcParams['font.sans-serif'] = ['Arial Unicode MS']  # macOS中文字体
+# matplotlib.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+
+import platform
 import matplotlib
 matplotlib.use('Agg')  # 设置非交互式后端
+import matplotlib.pyplot as plt
+
+
+# 根据操作系统选择合适的中文字体
+def set_chinese_fonts():
+    system = platform.system().lower()
+
+    if system == 'darwin':  # macOS
+        matplotlib.rcParams['font.family'] = 'Arial Unicode MS'
+        matplotlib.rcParams['font.sans-serif'] = ['Arial Unicode MS']
+    elif system == 'windows':
+        matplotlib.rcParams['font.family'] = 'Microsoft YaHei'
+        matplotlib.rcParams['font.sans-serif'] = ['Microsoft YaHei']
+    elif system == 'linux':
+        matplotlib.rcParams['font.family'] = 'WenQuanYi Micro Hei'
+        matplotlib.rcParams['font.sans-serif'] = ['WenQuanYi Micro Hei']
+    else:
+        # 备选方案
+        matplotlib.rcParams['font.family'] = 'sans-serif'
+        matplotlib.rcParams['font.sans-serif'] = ['SimHei', 'Arial']
+
+    # 解决负号显示问题
+    matplotlib.rcParams['axes.unicode_minus'] = False
+
+
+# 在导入 matplotlib 后立即调用
+set_chinese_fonts()
 
 # 导入数据库模型
 from models.models import db, Product, ProductSale, UserReview, PlatformDiscount, ShopInfo
@@ -381,12 +416,52 @@ class DataAnalysis:
         chart_path = os.path.join(self.charts_folder, chart_filename)
         plt.savefig(chart_path)
         plt.close()
+
+        emotion_dimensions = {
+            'satisfaction': [],
+            'value_for_money': [],
+            'performance': [],
+            'user_experience': []
+        }
+
+        for review in reviews:
+            emotions = analyze_review_emotions(review.content)
+            for key, value in emotions.items():
+                emotion_dimensions[key].append(value)
+
+        # 计算平均情感得分
+        avg_emotions = {
+            key: sum(values) / len(values) if values else 0
+            for key, values in emotion_dimensions.items()
+        }
+
+        # 生成情感雷达图
+        plt.figure(figsize=(8, 6))
+        labels = list(avg_emotions.keys())
+        values = list(avg_emotions.values())
+
+        angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False)
+        values = np.concatenate((values, [values[0]]))  # 闭合图形
+        angles = np.concatenate((angles, [angles[0]]))
+
+        plt.polar(angles, values, 'o-', linewidth=2)
+        plt.fill(angles, values, alpha=0.25)
+        plt.xticks(angles[:-1], labels)
+        plt.title('用户评价多维度情感分析')
+
+        # 保存雷达图
+        chart_filename = f'emotion_radar_{product_id}_{datetime.now().strftime("%Y%m%d%H%M%S")}.png'
+        chart_path = os.path.join(self.charts_folder, chart_filename)
+        plt.savefig(chart_path)
+        plt.close()
         
         return {
             'average_rating': average_rating,
             'rating_counts': rating_counts,
             'positive_ratio': positive_ratio,
-            'chart_url': os.path.join('images', 'charts', chart_filename)
+            'chart_url': os.path.join('images', 'charts', chart_filename),
+            'emotion_dimensions': avg_emotions,
+            'emotion_chart_url': os.path.join('images', 'charts', chart_filename)
         }
     
     def get_optimal_purchase_plan(self, product_id: int) -> Dict[str, Any]:
@@ -439,20 +514,30 @@ class DataAnalysis:
                 'product_id': p.id,
                 'product_name': p.name,
                 'platform': p.platform,
-                'original_price': p.price,
-                'final_price': final_price,
+                # 'original_price': p.price,
+                # 'final_price': final_price,
+                'original_price': round(p.price, 2),  # 保留两位小数
+                'final_price': round(final_price, 2),  # 保留两位小数
                 'discount_desc': '、'.join(discount_desc) if discount_desc else '无优惠',
-                'discount_amount': p.price - final_price,
-                'discount_percentage': (p.price - final_price) / p.price * 100 if p.price > 0 else 0
+                # 'discount_amount': p.price - final_price,
+                # 'discount_percentage': (p.price - final_price) / p.price * 100 if p.price > 0 else 0
+
+                'discount_amount': round(p.price - final_price, 2),  # 保留两位小数
+                'discount_percentage': round((p.price - final_price) / p.price * 100, 2) if p.price > 0 else 0
             })
         
         # 按最终价格排序
         best_plans.sort(key=lambda x: x['final_price'])
         
         # 生成对比图表
+        # platforms = [plan['platform'] for plan in best_plans[:5]]
+        # final_prices = [plan['final_price'] for plan in best_plans[:5]]
+        # original_prices = [plan['original_price'] for plan in best_plans[:5]]
+
+        # 生成对比图表部分的代码也可以使用 round() 函数
         platforms = [plan['platform'] for plan in best_plans[:5]]
-        final_prices = [plan['final_price'] for plan in best_plans[:5]]
-        original_prices = [plan['original_price'] for plan in best_plans[:5]]
+        final_prices = [round(plan['final_price'], 2) for plan in best_plans[:5]]
+        original_prices = [round(plan['original_price'], 2) for plan in best_plans[:5]]
         
         plt.figure(figsize=(12, 7))
         x = np.arange(len(platforms))
@@ -484,3 +569,51 @@ class DataAnalysis:
             'best_plans': best_plans,
             'chart_url': os.path.join('images', 'charts', chart_filename)
         }
+
+
+def analyze_review_emotions(review_text):
+    """
+    分析评论的多维度情感
+
+    维度：
+    1. 满意度 (Satisfaction)
+    2. 性价比 (Value for Money)
+    3. 产品性能 (Performance)
+    4. 用户体验 (User Experience)
+
+    返回各维度得分 (-1 到 1 之间)
+    """
+    # 使用TextBlob进行基础情感分析
+    blob = TextBlob(review_text)
+    overall_sentiment = blob.sentiment.polarity
+
+    # 根据关键词和上下文分析不同维度
+    emotions = {
+        'satisfaction': overall_sentiment,
+        'value_for_money': _analyze_value_dimension(review_text),
+        'performance': _analyze_performance_dimension(review_text),
+        'user_experience': _analyze_experience_dimension(review_text)
+    }
+
+    return emotions
+
+
+def _analyze_value_dimension(text):
+    """分析性价比维度"""
+    value_keywords = ['便宜', '划算', '性价比', '价格', '贵', '实惠']
+    score = sum(1 for keyword in value_keywords if keyword in text) / len(value_keywords)
+    return score * (1 if '好' in text else -1)
+
+
+def _analyze_performance_dimension(text):
+    """分析性能维度"""
+    performance_keywords = ['快', '强', '性能', '配置', '流畅', '卡', '慢']
+    score = sum(1 for keyword in performance_keywords if keyword in text) / len(performance_keywords)
+    return score * (1 if '好' in text else -1)
+
+
+def _analyze_experience_dimension(text):
+    """分析用户体验维度"""
+    experience_keywords = ['好用', '方便', '舒服', '不错', '麻烦', '复杂']
+    score = sum(1 for keyword in experience_keywords if keyword in text) / len(experience_keywords)
+    return score * (1 if '好' in text else -1)

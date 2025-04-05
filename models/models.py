@@ -120,6 +120,8 @@ class UserReview(db.Model):
     content = db.Column(db.Text)
     sentiment = db.Column(db.Float)  # 情感分析结果
     created_at = db.Column(db.DateTime, default=datetime.now)
+    sentiment_score = db.Column(db.Float)  # 总体情感得分
+    emotion_dimensions = db.Column(db.Text)  # JSON存储情感维度
     
     def __repr__(self):
         return f'<UserReview {self.rating}>'

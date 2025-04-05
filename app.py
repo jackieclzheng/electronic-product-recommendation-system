@@ -136,38 +136,62 @@ def register():
     
     return render_template('register.html')
 
+# @app.route('/login', methods=['GET', 'POST'])
+# def login():
+#     """用户登录"""
+#     if request.method == 'POST':
+#         username = request.form.get('username')
+#         password = request.form.get('password')
+#         remember = request.form.get('remember')
+#
+#         user = User.query.filter_by(username=username).first()
+#
+#         if user and check_password_hash(user.password_hash, password):
+#             session['user_id'] = user.id
+#             session['username'] = user.username
+#
+#             # 如果选择了"记住我"，设置更长的session过期时间
+#             if remember:
+#                 # 设置session有效期为30天
+#                 session.permanent = True
+#                 app.permanent_session_lifetime = timedelta(days=30)
+#             else:
+#                 # 默认session过期时间
+#                 session.permanent = False
+#
+#             # 更新最后登录时间
+#             user.last_login = datetime.now()
+#             db.session.commit()
+#
+#             flash('登录成功', 'success')
+#             return redirect(url_for('index'))
+#         else:
+#             flash('用户名或密码错误', 'danger')
+#
+#     return render_template('login.html')
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """用户登录"""
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        remember = request.form.get('remember')
-        
+
         user = User.query.filter_by(username=username).first()
-        
+
         if user and check_password_hash(user.password_hash, password):
             session['user_id'] = user.id
             session['username'] = user.username
-            
-            # 如果选择了"记住我"，设置更长的session过期时间
-            if remember:
-                # 设置session有效期为30天
-                session.permanent = True
-                app.permanent_session_lifetime = timedelta(days=30)
-            else:
-                # 默认session过期时间
-                session.permanent = False
-            
-            # 更新最后登录时间
-            user.last_login = datetime.now()
-            db.session.commit()
-            
-            flash('登录成功', 'success')
+
+            # 判断是否为管理员，如果是则重定向到管理后台
+            if user.username == 'admin':
+                return redirect(url_for('admin_dashboard'))
+
+            # 普通用户重定向到首页
             return redirect(url_for('index'))
         else:
             flash('用户名或密码错误', 'danger')
-    
+
     return render_template('login.html')
 
 @app.route('/logout')
@@ -407,7 +431,7 @@ def about():
 @admin_required
 def admin_dashboard():
     """管理员仪表盘"""
-    # 统计数据
+    # 统计数据admin_dash
     product_count = Product.query.count()
     user_count = User.query.count()
     review_count = UserReview.query.count()
@@ -954,3 +978,40 @@ def admin_analysis():
                           platform_sales=platform_sales,
                           user_behavior=user_behavior,
                           category_analysis=category_analysis)
+
+
+@app.route('/submit_review', methods=['POST'])
+@login_required
+def submit_review():
+    """提交产品评价"""
+    product_id = request.form.get('product_id', type=int)
+    rating = request.form.get('rating', type=int)
+    content = request.form.get('content')
+
+    # 验证数据
+    if not product_id or not rating or not content:
+        flash('请填写所有必要信息', 'danger')
+        return redirect(url_for('product_detail', product_id=product_id))
+
+    if rating < 1 or rating > 5:
+        flash('评分必须在1-5之间', 'danger')
+        return redirect(url_for('product_detail', product_id=product_id))
+
+    # 检查产品是否存在
+    product = Product.query.get_or_404(product_id)
+
+    # 创建评价
+    review = UserReview(
+        user_id=session['user_id'],
+        product_id=product_id,
+        rating=rating,
+        content=content,
+        sentiment=rating / 5.0,  # 简单地使用评分作为情感值
+        created_at=datetime.now()
+    )
+
+    db.session.add(review)
+    db.session.commit()
+
+    flash('评价提交成功，感谢您的反馈！', 'success')
+    return redirect(url_for('product_detail', product_id=product_id))

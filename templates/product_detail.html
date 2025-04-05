@@ -140,106 +140,251 @@
 
 <!-- 用户评价 -->
 <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">用户评价</h5>
-        <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#reviewModal" data-product-id="{{ product.id }}">
-            <i class="fas fa-comment mr-1"></i> 写评价
-        </button>
+{#    <div class="card-header d-flex justify-content-between align-items-center">#}
+{#        <h5 class="mb-0">用户评价</h5>#}
+{#        <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#reviewModal" data-product-id="{{ product.id }}">#}
+{#            <i class="fas fa-comment mr-1"></i> 写评价#}
+{#        </button>#}
+{#    </div>#}
+{#    <div class="card-body">#}
+{#        {% if reviews %}#}
+{#        <div class="mb-4">#}
+{#            <div class="row align-items-center">#}
+{#                <div class="col-md-3 text-center">#}
+{#                    <h1 class="display-4">{{ review_analysis.average_rating|round(1) }}</h1>#}
+{#                    <div class="rating mb-2">#}
+{#                        {% for i in range(5) %}#}
+{#                        <i class="{% if i < review_analysis.average_rating|round|int %}fas{% else %}far{% endif %} fa-star text-warning"></i>#}
+{#                        {% endfor %}#}
+{#                    </div>#}
+{#                    <p class="text-muted">{{ reviews|length }}条评价</p>#}
+{#                </div>#}
+{#                <div class="col-md-9">#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">5星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (review_analysis.rating_counts[4] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[4] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[4] }}</div>#}
+{#                    </div>#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">4星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (review_analysis.rating_counts[3] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[3] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[3] }}</div>#}
+{#                    </div>#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">3星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (review_analysis.rating_counts[2] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[2] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[2] }}</div>#}
+{#                    </div>#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">2星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (review_analysis.rating_counts[1] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[1] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[1] }}</div>#}
+{#                    </div>#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">1星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (review_analysis.rating_counts[0] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[0] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[0] }}</div>#}
+{#                    </div>#}
+{#                </div>#}
+{#            </div>#}
+{#        </div>#}
+{#        #}
+{#        <hr>#}
+{#        #}
+{#        <!-- 评价列表 -->#}
+{#        {% for review in reviews %}#}
+{#        <div class="media mb-4">#}
+{#            <div class="mr-3">#}
+{#                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">#}
+{#                    {{ review.user.username[0]|upper }}#}
+{#                </div>#}
+{#            </div>#}
+{#            <div class="media-body">#}
+{#                <h5 class="mt-0">{{ review.user.username }}</h5>#}
+{#                <div class="rating mb-2">#}
+{#                    {% for i in range(5) %}#}
+{#                    <i class="{% if i < review.rating %}fas{% else %}far{% endif %} fa-star text-warning"></i>#}
+{#                    {% endfor %}#}
+{#                    <small class="text-muted ml-2">{{ review.created_at.strftime('%Y-%m-%d') }}</small>#}
+{#                </div>#}
+{#                <p>{{ review.content }}</p>#}
+{#            </div>#}
+{#        </div>#}
+{#        {% endfor %}#}
+{#        {% else %}#}
+{#        <div class="text-center py-5">#}
+{#            <i class="far fa-comment-dots fa-3x text-muted mb-3"></i>#}
+{#            <p class="lead">暂无评价</p>#}
+{#            <button class="btn btn-primary" data-toggle="modal" data-target="#reviewModal" data-product-id="{{ product.id }}">#}
+{#                <i class="fas fa-comment mr-1"></i> 写第一条评价#}
+{#            </button>#}
+{#        </div>#}
+{#        {% endif %}#}
+{#    </div>ard-header d-flex justify-content-between align-items-center">#}
+{#        <h5 class="mb-0">用户评价</h5>#}
+{#        <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#reviewModal" data-product-id="{{ product.id }}">#}
+{#            <i class="fas fa-comment mr-1"></i> 写评价#}
+{#        </button>#}
+{#    </div>#}
+{#    <div class="card-body">#}
+{#        {% if reviews %}#}
+{#        <div class="mb-4">#}
+{#            <div class="row align-items-center">#}
+{#                <div class="col-md-3 text-center">#}
+{#                    <h1 class="display-4">{{ review_analysis.average_rating|round(1) }}</h1>#}
+{#                    <div class="rating mb-2">#}
+{#                        {% for i in range(5) %}#}
+{#                        <i class="{% if i < review_analysis.average_rating|round|int %}fas{% else %}far{% endif %} fa-star text-warning"></i>#}
+{#                        {% endfor %}#}
+{#                    </div>#}
+{#                    <p class="text-muted">{{ reviews|length }}条评价</p>#}
+{#                </div>#}
+{#                <div class="col-md-9">#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">5星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (review_analysis.rating_counts[4] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[4] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[4] }}</div>#}
+{#                    </div>#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">4星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (review_analysis.rating_counts[3] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[3] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[3] }}</div>#}
+{#                    </div>#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">3星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (review_analysis.rating_counts[2] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[2] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[2] }}</div>#}
+{#                    </div>#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">2星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (review_analysis.rating_counts[1] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[1] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[1] }}</div>#}
+{#                    </div>#}
+{#                    <div class="row align-items-center mb-2">#}
+{#                        <div class="col-2">1星</div>#}
+{#                        <div class="col-8">#}
+{#                            <div class="progress">#}
+{#                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (review_analysis.rating_counts[0] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[0] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                        <div class="col-2">{{ review_analysis.rating_counts[0] }}</div>#}
+{#                    </div>#}
+{#                </div>#}
+{#            </div>#}
+{#        </div>#}
+{#        #}
+{#        <hr>#}
+{#        #}
+{#        <!-- 评价列表 -->#}
+{#        {% for review in reviews %}#}
+{#        <div class="media mb-4">#}
+{#            <div class="mr-3">#}
+{#                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">#}
+{#                    {{ review.user.username[0]|upper }}#}
+{#                </div>#}
+{#            </div>#}
+{#            <div class="media-body">#}
+{#                <h5 class="mt-0">{{ review.user.username }}</h5>#}
+{#                <div class="rating mb-2">#}
+{#                    {% for i in range(5) %}#}
+{#                    <i class="{% if i < review.rating %}fas{% else %}far{% endif %} fa-star text-warning"></i>#}
+{#                    {% endfor %}#}
+{#                    <small class="text-muted ml-2">{{ review.created_at.strftime('%Y-%m-%d') }}</small>#}
+{#                </div>#}
+{#                <p>{{ review.content }}</p>#}
+{#            </div>#}
+{#        </div>#}
+{#        {% endfor %}#}
+{#        {% else %}#}
+{#        <div class="text-center py-5">#}
+{#            <i class="far fa-comment-dots fa-3x text-muted mb-3"></i>#}
+{#            <p class="lead">暂无评价</p>#}
+{#            <button class="btn btn-primary" data-toggle="modal" data-target="#reviewModal" data-product-id="{{ product.id }}">#}
+{#                <i class="fas fa-comment mr-1"></i> 写第一条评价#}
+{#            </button>#}
+{#        </div>#}
+{#        {% endif %}#}
+{#    </div>#}
+    <div class="card-header">
+        <h5 class="mb-0">多维度情感分析</h5>
     </div>
     <div class="card-body">
-        {% if reviews %}
-        <div class="mb-4">
-            <div class="row align-items-center">
-                <div class="col-md-3 text-center">
-                    <h1 class="display-4">{{ review_analysis.average_rating|round(1) }}</h1>
-                    <div class="rating mb-2">
-                        {% for i in range(5) %}
-                        <i class="{% if i < review_analysis.average_rating|round|int %}fas{% else %}far{% endif %} fa-star text-warning"></i>
-                        {% endfor %}
-                    </div>
-                    <p class="text-muted">{{ reviews|length }}条评价</p>
-                </div>
-                <div class="col-md-9">
-                    <div class="row align-items-center mb-2">
-                        <div class="col-2">5星</div>
-                        <div class="col-8">
-                            <div class="progress">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (review_analysis.rating_counts[4] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[4] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
-                            </div>
-                        </div>
-                        <div class="col-2">{{ review_analysis.rating_counts[4] }}</div>
-                    </div>
-                    <div class="row align-items-center mb-2">
-                        <div class="col-2">4星</div>
-                        <div class="col-8">
-                            <div class="progress">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (review_analysis.rating_counts[3] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[3] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
-                            </div>
-                        </div>
-                        <div class="col-2">{{ review_analysis.rating_counts[3] }}</div>
-                    </div>
-                    <div class="row align-items-center mb-2">
-                        <div class="col-2">3星</div>
-                        <div class="col-8">
-                            <div class="progress">
-                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (review_analysis.rating_counts[2] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[2] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
-                            </div>
-                        </div>
-                        <div class="col-2">{{ review_analysis.rating_counts[2] }}</div>
-                    </div>
-                    <div class="row align-items-center mb-2">
-                        <div class="col-2">2星</div>
-                        <div class="col-8">
-                            <div class="progress">
-                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (review_analysis.rating_counts[1] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[1] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
-                            </div>
-                        </div>
-                        <div class="col-2">{{ review_analysis.rating_counts[1] }}</div>
-                    </div>
-                    <div class="row align-items-center mb-2">
-                        <div class="col-2">1星</div>
-                        <div class="col-8">
-                            <div class="progress">
-                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (review_analysis.rating_counts[0] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[0] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
-                            </div>
-                        </div>
-                        <div class="col-2">{{ review_analysis.rating_counts[0] }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <hr>
-        
-        <!-- 评价列表 -->
-        {% for review in reviews %}
-        <div class="media mb-4">
-            <div class="mr-3">
-                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                    {{ review.user.username[0]|upper }}
-                </div>
-            </div>
-            <div class="media-body">
-                <h5 class="mt-0">{{ review.user.username }}</h5>
-                <div class="rating mb-2">
-                    {% for i in range(5) %}
-                    <i class="{% if i < review.rating %}fas{% else %}far{% endif %} fa-star text-warning"></i>
-                    {% endfor %}
-                    <small class="text-muted ml-2">{{ review.created_at.strftime('%Y-%m-%d') }}</small>
-                </div>
-                <p>{{ review.content }}</p>
-            </div>
-        </div>
-        {% endfor %}
-        {% else %}
-        <div class="text-center py-5">
-            <i class="far fa-comment-dots fa-3x text-muted mb-3"></i>
-            <p class="lead">暂无评价</p>
-            <button class="btn btn-primary" data-toggle="modal" data-target="#reviewModal" data-product-id="{{ product.id }}">
-                <i class="fas fa-comment mr-1"></i> 写第一条评价
-            </button>
-        </div>
-        {% endif %}
+        <img src="{{ url_for('static', filename=review_analysis.emotion_chart_url) }}" class="img-fluid" alt="情感雷达图">
+
+        <table class="table mt-3">
+            <thead>
+                <tr>
+                    <th>维度</th>
+                    <th>情感得分</th>
+                    <th>评价</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dimension, score in review_analysis.emotion_dimensions.items() %}
+                <tr>
+                    <td>
+                        {% if dimension == 'satisfaction' %}满意度
+                        {% elif dimension == 'value_for_money' %}性价比
+                        {% elif dimension == 'performance' %}产品性能
+                        {% elif dimension == 'user_experience' %}用户体验
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if score > 0.5 %}
+                            <span class="badge badge-success">非常正面</span>
+                        {% elif score > 0 %}
+                            <span class="badge badge-info">较为正面</span>
+                        {% elif score == 0 %}
+                            <span class="badge badge-secondary">中性</span>
+                        {% elif score > -0.5 %}
+                            <span class="badge badge-warning">较为负面</span>
+                        {% else %}
+                            <span class="badge badge-danger">非常负面</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ score|round(2) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
