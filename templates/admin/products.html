@@ -1,0 +1,395 @@
+{% extends "layout.html" %}
+
+{% block title %}产品管理 - 电子产品分析与推荐系统{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="admin-products">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="admin-title">产品管理</h2>
+            <p class="text-muted">管理系统中的所有电子产品信息</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addProductModal">
+                <i class="fas fa-plus"></i> 添加新产品
+            </button>
+        </div>
+    </div>
+
+    <!-- 筛选和搜索 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('admin_products') }}" class="row">
+                <div class="col-md-3 mb-2">
+                    <select name="category" class="form-control">
+                        <option value="">所有分类</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {% if request.args.get('category')|int == category.id %}selected{% endif %}>{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <input type="text" name="keyword" class="form-control" placeholder="搜索产品名称" value="{{ request.args.get('keyword', '') }}">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <input type="number" name="min_price" class="form-control" placeholder="最低价格" value="{{ request.args.get('min_price', '') }}">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <input type="number" name="max_price" class="form-control" placeholder="最高价格" value="{{ request.args.get('max_price', '') }}">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <button type="submit" class="btn btn-primary btn-block">筛选</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 产品列表 -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>图片</th>
+                            <th>产品名称</th>
+                            <th>分类</th>
+                            <th>品牌</th>
+                            <th>价格</th>
+                            <th>更新时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>{{ product.id }}</td>
+                            <td>
+                                {% if product.image_url %}
+                                <img src="{{ product.image_url }}" alt="{{ product.name }}" class="product-thumbnail">
+                                {% else %}
+                                <div class="no-image">无图片</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.category.name }}</td>
+                            <td>{{ product.brand }}</td>
+                            <td>¥{{ product.price }}</td>
+                            <td>{{ product.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-info edit-product" data-id="{{ product.id }}" data-toggle="modal" data-target="#editProductModal">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <a href="{{ url_for('product_detail', product_id=product.id) }}" class="btn btn-secondary" target="_blank">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-danger delete-product" data-id="{{ product.id }}" data-name="{{ product.name }}" data-toggle="modal" data-target="#deleteProductModal">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分页 -->
+    {% if pagination.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('admin_products', page=pagination.prev_num, **request.args) }}">上一页</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#">上一页</a>
+            </li>
+            {% endif %}
+
+            {% for page in pagination.iter_pages() %}
+                {% if page %}
+                    {% if page != pagination.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin_products', page=page, **request.args) }}">{{ page }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item active">
+                        <a class="page-link" href="#">{{ page }}</a>
+                    </li>
+                    {% endif %}
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#">...</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('admin_products', page=pagination.next_num, **request.args) }}">下一页</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#">下一页</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- 添加产品模态框 -->
+<div class="modal fade" id="addProductModal" tabindex="-1" role="dialog" aria-labelledby="addProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addProductModalLabel">添加新产品</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_add_product') }}" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="name">产品名称 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="category_id">产品分类 <span class="text-danger">*</span></label>
+                                <select class="form-control" id="category_id" name="category_id" required>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}">{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="brand">品牌</label>
+                                <input type="text" class="form-control" id="brand" name="brand">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="model">型号</label>
+                                <input type="text" class="form-control" id="model" name="model">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="price">价格 <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" class="form-control" id="price" name="price" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="platform">平台</label>
+                                <input type="text" class="form-control" id="platform" name="platform">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="image">产品图片</label>
+                        <input type="file" class="form-control-file" id="image" name="image" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label for="spec_json">产品规格 (JSON格式)</label>
+                        <textarea class="form-control" id="spec_json" name="spec_json" rows="5" placeholder='{"屏幕尺寸": "6.1英寸", "处理器": "A15", "内存": "4GB"}'></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑产品模态框 -->
+<div class="modal fade" id="editProductModal" tabindex="-1" role="dialog" aria-labelledby="editProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProductModalLabel">编辑产品</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_edit_product') }}" enctype="multipart/form-data" id="editProductForm">
+                <input type="hidden" name="product_id" id="edit_product_id">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="edit_name">产品名称 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="edit_name" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="edit_category_id">产品分类 <span class="text-danger">*</span></label>
+                                <select class="form-control" id="edit_category_id" name="category_id" required>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}">{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="edit_brand">品牌</label>
+                                <input type="text" class="form-control" id="edit_brand" name="brand">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="edit_model">型号</label>
+                                <input type="text" class="form-control" id="edit_model" name="model">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="edit_price">价格 <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" class="form-control" id="edit_price" name="price" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="edit_platform">平台</label>
+                                <input type="text" class="form-control" id="edit_platform" name="platform">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_image">产品图片</label>
+                        <input type="file" class="form-control-file" id="edit_image" name="image" accept="image/*">
+                        <small class="form-text text-muted">如不更换图片，请留空</small>
+                        <div id="current_image_container" class="mt-2"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_spec_json">产品规格 (JSON格式)</label>
+                        <textarea class="form-control" id="edit_spec_json" name="spec_json" rows="5"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存更改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 删除产品确认模态框 -->
+<div class="modal fade" id="deleteProductModal" tabindex="-1" role="dialog" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteProductModalLabel">确认删除</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除产品 "<span id="delete_product_name"></span>" 吗？</p>
+                <p class="text-danger">此操作不可逆，产品的所有相关数据也将被删除。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <form method="POST" action="{{ url_for('admin_delete_product') }}" id="deleteProductForm">
+                    <input type="hidden" name="product_id" id="delete_product_id">
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // 高亮当前页面在导航中的位置
+        $('.nav-link').removeClass('active');
+        $('.admin-products-link').addClass('active');
+        
+        // 编辑产品
+        $('.edit-product').click(function() {
+            var productId = $(this).data('id');
+            
+            // 通过AJAX获取产品信息
+            $.ajax({
+                url: '/admin/product/' + productId + '/json',
+                type: 'GET',
+                success: function(data) {
+                    // 填充表单
+                    $('#edit_product_id').val(data.id);
+                    $('#edit_name').val(data.name);
+                    $('#edit_category_id').val(data.category_id);
+                    $('#edit_brand').val(data.brand);
+                    $('#edit_model').val(data.model);
+                    $('#edit_price').val(data.price);
+                    $('#edit_platform').val(data.platform);
+                    $('#edit_spec_json').val(data.spec_json);
+                    
+                    // 显示当前图片
+                    if (data.image_url) {
+                        $('#current_image_container').html('<img src="' + data.image_url + '" alt="当前图片" class="img-thumbnail" style="max-height: 100px;">');
+                    } else {
+                        $('#current_image_container').html('<p>无图片</p>');
+                    }
+                },
+                error: function() {
+                    alert('获取产品信息失败');
+                }
+            });
+        });
+        
+        // 删除产品
+        $('.delete-product').click(function() {
+            var productId = $(this).data('id');
+            var productName = $(this).data('name');
+            
+            $('#delete_product_id').val(productId);
+            $('#delete_product_name').text(productName);
+        });
+        
+        // JSON格式验证
+        $('#spec_json, #edit_spec_json').blur(function() {
+            var jsonStr = $(this).val();
+            if (jsonStr) {
+                try {
+                    JSON.parse(jsonStr);
+                    $(this).removeClass('is-invalid').addClass('is-valid');
+                } catch (e) {
+                    $(this).removeClass('is-valid').addClass('is-invalid');
+                    alert('JSON格式不正确，请检查');
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

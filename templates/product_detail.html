@@ -1,0 +1,321 @@
+{% extends "layout.html" %}
+
+{% block title %}产品详情 - {{ product.name }} - 电子产品分析与推荐系统{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.css">
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('index') }}">首页</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('category_products', category_id=product.category_id) }}">{{ product.category.name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ product.name }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <!-- 产品图片 -->
+    <div class="col-md-5 mb-4">
+        <div class="card">
+            <img src="{{ product.image_url }}" class="card-img-top" alt="{{ product.name }}">
+            <div class="card-body text-center">
+                <button class="btn btn-outline-primary btn-favorite mr-2" data-product-id="{{ product.id }}" title="收藏">
+                    <i class="far fa-heart"></i>
+                </button>
+                <button class="btn btn-primary btn-add-cart" data-product-id="{{ product.id }}">
+                    <i class="fas fa-shopping-cart mr-2"></i> 加入购物车
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 产品信息 -->
+    <div class="col-md-7 mb-4">
+        <h2>{{ product.name }}</h2>
+        <p class="text-muted">{{ product.brand }} | {{ product.model }}</p>
+        
+        <div class="d-flex align-items-center mb-3">
+            <div class="rating mr-3">
+                {% for i in range(5) %}
+                <i class="{% if reviews and i < (reviews|sum(attribute='rating') / reviews|length)|round|int %}fas{% else %}far{% endif %} fa-star text-warning"></i>
+                {% endfor %}
+            </div>
+            <span class="text-muted">{{ reviews|length }}条评价</span>
+        </div>
+        
+        <div class="mb-3">
+            <h3 class="text-danger">¥{{ product.price }}</h3>
+            <span class="badge badge-secondary">{{ product.platform }}</span>
+        </div>
+        
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">产品规格</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tbody>
+                        {% for key, value in specs.items() %}
+                        <tr>
+                            <th scope="row" style="width: 30%">{{ key }}</th>
+                            <td>{{ value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 价格趋势图 -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">价格趋势</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="priceTrendChart" height="200"></canvas>
+                <script id="priceTrendData" type="application/json">
+                    {{ price_trend|tojson }}
+                </script>
+            </div>
+        </div>
+        
+        <!-- 平台价格对比 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">平台价格对比</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="platformCompareChart" height="200"></canvas>
+                <script id="platformCompareData" type="application/json">
+                    {{ platform_compare|tojson }}
+                </script>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 最优购买方案 -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">最优购买方案</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>平台</th>
+                        <th>产品名称</th>
+                        <th>原价</th>
+                        <th>优惠</th>
+                        <th>最终价格</th>
+                        <th>优惠力度</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plan in optimal_plans.best_plans[:5] %}
+                    <tr {% if loop.first %}class="table-success"{% endif %}>
+                        <td>{{ plan.platform }}</td>
+                        <td>{{ plan.product_name }}</td>
+                        <td>¥{{ plan.original_price }}</td>
+                        <td>{{ plan.discount_desc }}</td>
+                        <td class="text-danger font-weight-bold">¥{{ plan.final_price }}</td>
+                        <td>{{ plan.discount_percentage|round|int }}%</td>
+                        <td>
+                            <a href="{{ url_for('product_detail', product_id=plan.product_id) }}" class="btn btn-sm btn-outline-primary">查看详情</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="text-center mt-3">
+            <img src="{{ url_for('static', filename=optimal_plans.chart_url) }}" class="img-fluid" alt="最优购买方案对比">
+        </div>
+    </div>
+</div>
+
+<!-- 用户评价 -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">用户评价</h5>
+        <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#reviewModal" data-product-id="{{ product.id }}">
+            <i class="fas fa-comment mr-1"></i> 写评价
+        </button>
+    </div>
+    <div class="card-body">
+        {% if reviews %}
+        <div class="mb-4">
+            <div class="row align-items-center">
+                <div class="col-md-3 text-center">
+                    <h1 class="display-4">{{ review_analysis.average_rating|round(1) }}</h1>
+                    <div class="rating mb-2">
+                        {% for i in range(5) %}
+                        <i class="{% if i < review_analysis.average_rating|round|int %}fas{% else %}far{% endif %} fa-star text-warning"></i>
+                        {% endfor %}
+                    </div>
+                    <p class="text-muted">{{ reviews|length }}条评价</p>
+                </div>
+                <div class="col-md-9">
+                    <div class="row align-items-center mb-2">
+                        <div class="col-2">5星</div>
+                        <div class="col-8">
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (review_analysis.rating_counts[4] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[4] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
+                            </div>
+                        </div>
+                        <div class="col-2">{{ review_analysis.rating_counts[4] }}</div>
+                    </div>
+                    <div class="row align-items-center mb-2">
+                        <div class="col-2">4星</div>
+                        <div class="col-8">
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (review_analysis.rating_counts[3] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[3] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
+                            </div>
+                        </div>
+                        <div class="col-2">{{ review_analysis.rating_counts[3] }}</div>
+                    </div>
+                    <div class="row align-items-center mb-2">
+                        <div class="col-2">3星</div>
+                        <div class="col-8">
+                            <div class="progress">
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (review_analysis.rating_counts[2] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[2] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
+                            </div>
+                        </div>
+                        <div class="col-2">{{ review_analysis.rating_counts[2] }}</div>
+                    </div>
+                    <div class="row align-items-center mb-2">
+                        <div class="col-2">2星</div>
+                        <div class="col-8">
+                            <div class="progress">
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (review_analysis.rating_counts[1] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[1] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
+                            </div>
+                        </div>
+                        <div class="col-2">{{ review_analysis.rating_counts[1] }}</div>
+                    </div>
+                    <div class="row align-items-center mb-2">
+                        <div class="col-2">1星</div>
+                        <div class="col-8">
+                            <div class="progress">
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (review_analysis.rating_counts[0] / reviews|length * 100)|round|int }}%" aria-valuenow="{{ review_analysis.rating_counts[0] }}" aria-valuemin="0" aria-valuemax="{{ reviews|length }}"></div>
+                            </div>
+                        </div>
+                        <div class="col-2">{{ review_analysis.rating_counts[0] }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <!-- 评价列表 -->
+        {% for review in reviews %}
+        <div class="media mb-4">
+            <div class="mr-3">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                    {{ review.user.username[0]|upper }}
+                </div>
+            </div>
+            <div class="media-body">
+                <h5 class="mt-0">{{ review.user.username }}</h5>
+                <div class="rating mb-2">
+                    {% for i in range(5) %}
+                    <i class="{% if i < review.rating %}fas{% else %}far{% endif %} fa-star text-warning"></i>
+                    {% endfor %}
+                    <small class="text-muted ml-2">{{ review.created_at.strftime('%Y-%m-%d') }}</small>
+                </div>
+                <p>{{ review.content }}</p>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center py-5">
+            <i class="far fa-comment-dots fa-3x text-muted mb-3"></i>
+            <p class="lead">暂无评价</p>
+            <button class="btn btn-primary" data-toggle="modal" data-target="#reviewModal" data-product-id="{{ product.id }}">
+                <i class="fas fa-comment mr-1"></i> 写第一条评价
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 相似产品推荐 -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">相似产品推荐</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for product in similar_products %}
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 product-card" data-product-id="{{ product.id }}">
+                    <img src="{{ product.image_url }}" class="card-img-top" alt="{{ product.name }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text">{{ product.brand }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-danger font-weight-bold">¥{{ product.price }}</span>
+                            <span class="badge badge-secondary">{{ product.platform }}</span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="btn btn-sm btn-outline-primary">查看详情</a>
+                        <button class="btn btn-sm btn-outline-danger btn-add-cart float-right" data-product-id="{{ product.id }}">
+                            <i class="fas fa-shopping-cart"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- 评价模态框 -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reviewModalLabel">写评价</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="{{ url_for('submit_review') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="product_id" id="product_id" value="{{ product.id }}">
+                    
+                    <div class="form-group">
+                        <label>评分</label>
+                        <div class="rating-input mb-2">
+                            <i class="far fa-star fa-2x text-warning" data-value="1"></i>
+                            <i class="far fa-star fa-2x text-warning" data-value="2"></i>
+                            <i class="far fa-star fa-2x text-warning" data-value="3"></i>
+                            <i class="far fa-star fa-2x text-warning" data-value="4"></i>
+                            <i class="far fa-star fa-2x text-warning" data-value="5"></i>
+                        </div>
+                        <input type="hidden" name="rating" id="rating" value="5">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="content">评价内容</label>
+                        <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">提交评价</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+{% endblock %}

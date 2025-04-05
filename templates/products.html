@@ -1,0 +1,203 @@
+{% extends "layout.html" %}
+
+{% block title %}产品列表 - 电子产品分析与推荐系统{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@14.6.3/distribute/nouislider.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 筛选侧边栏 -->
+    <div class="col-md-3">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">筛选条件</h5>
+            </div>
+            <div class="card-body">
+                <form id="filterForm" action="{{ url_for('products') }}" method="GET">
+                    <!-- 类别筛选 -->
+                    <div class="form-group">
+                        <label for="category">产品类别</label>
+                        <select class="form-control" id="category" name="category">
+                            <option value="">全部类别</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- 平台筛选 -->
+                    <div class="form-group">
+                        <label for="platform">平台</label>
+                        <select class="form-control" id="platform" name="platform">
+                            <option value="">全部平台</option>
+                            {% for platform in platforms %}
+                            <option value="{{ platform }}" {% if selected_platform == platform %}selected{% endif %}>{{ platform }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- 价格范围 -->
+                    <div class="form-group">
+                        <label for="priceRange">价格范围</label>
+                        <div id="priceRange" data-min-price="{{ min_price or 0 }}" data-max-price="{{ max_price or 10000 }}"></div>
+                        <div id="priceDisplay" class="text-center my-2">¥{{ min_price or 0 }} - ¥{{ max_price or 10000 }}</div>
+                        <input type="hidden" id="min_price" name="min_price" value="{{ min_price or 0 }}">
+                        <input type="hidden" id="max_price" name="max_price" value="{{ max_price or 10000 }}">
+                    </div>
+                    
+                    <!-- 排序方式 -->
+                    <div class="form-group">
+                        <label for="sort">排序方式</label>
+                        <select class="form-control" id="sort" name="sort">
+                            <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>价格从低到高</option>
+                            <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>价格从高到低</option>
+                            <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>最新上架</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block">应用筛选</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 产品列表 -->
+    <div class="col-md-9">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>产品列表</h2>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary view-btn" data-view="grid" title="网格视图">
+                    <i class="fas fa-th"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary view-btn" data-view="list" title="列表视图">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 网格视图 -->
+        <div id="gridView" class="row">
+            {% for product in products %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 product-card" data-product-id="{{ product.id }}">
+                    <img src="{{ product.image_url }}" class="card-img-top" alt="{{ product.name }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text">{{ product.brand }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-danger font-weight-bold">¥{{ product.price }}</span>
+                            <span class="badge badge-secondary">{{ product.platform }}</span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="btn btn-sm btn-outline-primary">查看详情</a>
+                        <button class="btn btn-sm btn-outline-danger btn-add-cart float-right" data-product-id="{{ product.id }}">
+                            <i class="fas fa-shopping-cart"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- 列表视图 (默认隐藏) -->
+        <div id="listView" class="d-none">
+            <div class="list-group">
+                {% for product in products %}
+                <div class="list-group-item list-group-item-action product-card" data-product-id="{{ product.id }}">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <img src="{{ product.image_url }}" class="img-fluid" alt="{{ product.name }}">
+                        </div>
+                        <div class="col-md-7">
+                            <h5>{{ product.name }}</h5>
+                            <p class="mb-1">品牌: {{ product.brand }}</p>
+                            <p class="mb-1">平台: {{ product.platform }}</p>
+                        </div>
+                        <div class="col-md-3 text-right">
+                            <h5 class="text-danger">¥{{ product.price }}</h5>
+                            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="btn btn-sm btn-outline-primary mt-2">查看详情</a>
+                            <button class="btn btn-sm btn-outline-danger mt-2 btn-add-cart" data-product-id="{{ product.id }}">
+                                <i class="fas fa-shopping-cart"></i> 加入购物车
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('products', page=pagination.prev_num, category=selected_category, platform=selected_platform, min_price=min_price, max_price=max_price, sort=sort_by) }}">上一页</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for page in pagination.iter_pages() %}
+                    {% if page %}
+                        {% if page != pagination.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('products', page=page, category=selected_category, platform=selected_platform, min_price=min_price, max_price=max_price, sort=sort_by) }}">{{ page }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active" aria-current="page">
+                            <span class="page-link">{{ page }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('products', page=pagination.next_num, category=selected_category, platform=selected_platform, min_price=min_price, max_price=max_price, sort=sort_by) }}">下一页</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/nouislider@14.6.3/distribute/nouislider.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 视图切换
+        $('.view-btn').on('click', function() {
+            var view = $(this).data('view');
+            $('.view-btn').removeClass('active');
+            $(this).addClass('active');
+            
+            if (view === 'grid') {
+                $('#gridView').removeClass('d-none');
+                $('#listView').addClass('d-none');
+            } else {
+                $('#gridView').addClass('d-none');
+                $('#listView').removeClass('d-none');
+            }
+        });
+        
+        // 默认选中网格视图
+        $('.view-btn[data-view="grid"]').addClass('active');
+    });
+</script>
+{% endblock %}

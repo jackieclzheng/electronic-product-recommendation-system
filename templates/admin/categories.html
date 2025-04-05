@@ -1,0 +1,200 @@
+{% extends "layout.html" %}
+
+{% block title %}分类管理 - 电子产品分析与推荐系统{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="admin-categories">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="admin-title">分类管理</h2>
+            <p class="text-muted">管理系统中的产品分类</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addCategoryModal">
+                <i class="fas fa-plus"></i> 添加新分类
+            </button>
+        </div>
+    </div>
+
+    <!-- 分类列表 -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>分类名称</th>
+                            <th>描述</th>
+                            <th>产品数量</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr>
+                            <td>{{ category.id }}</td>
+                            <td>{{ category.name }}</td>
+                            <td>{{ category.description }}</td>
+                            <td>{{ category.products.count() }}</td>
+                            <td>{{ category.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-info edit-category" data-id="{{ category.id }}" data-toggle="modal" data-target="#editCategoryModal">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger delete-category" data-id="{{ category.id }}" data-name="{{ category.name }}" data-count="{{ category.products.count() }}" data-toggle="modal" data-target="#deleteCategoryModal">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加分类模态框 -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" role="dialog" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCategoryModalLabel">添加新分类</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_add_category') }}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="name">分类名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">分类描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑分类模态框 -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1" role="dialog" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editCategoryModalLabel">编辑分类</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_edit_category') }}" id="editCategoryForm">
+                <input type="hidden" name="category_id" id="edit_category_id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit_name">分类名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_description">分类描述</label>
+                        <textarea class="form-control" id="edit_description" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存更改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 删除分类确认模态框 -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1" role="dialog" aria-labelledby="deleteCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteCategoryModalLabel">确认删除</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除分类 "<span id="delete_category_name"></span>" 吗？</p>
+                <div id="category_warning" class="alert alert-warning">
+                    <strong>警告：</strong> 该分类下有 <span id="product_count"></span> 个产品，删除分类将导致这些产品失去分类归属。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <form method="POST" action="{{ url_for('admin_delete_category') }}" id="deleteCategoryForm">
+                    <input type="hidden" name="category_id" id="delete_category_id">
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // 高亮当前页面在导航中的位置
+        $('.nav-link').removeClass('active');
+        $('.admin-categories-link').addClass('active');
+        
+        // 编辑分类
+        $('.edit-category').click(function() {
+            var categoryId = $(this).data('id');
+            
+            // 通过AJAX获取分类信息
+            $.ajax({
+                url: '/admin/category/' + categoryId + '/json',
+                type: 'GET',
+                success: function(data) {
+                    // 填充表单
+                    $('#edit_category_id').val(data.id);
+                    $('#edit_name').val(data.name);
+                    $('#edit_description').val(data.description);
+                },
+                error: function() {
+                    alert('获取分类信息失败');
+                }
+            });
+        });
+        
+        // 删除分类
+        $('.delete-category').click(function() {
+            var categoryId = $(this).data('id');
+            var categoryName = $(this).data('name');
+            var productCount = $(this).data('count');
+            
+            $('#delete_category_id').val(categoryId);
+            $('#delete_category_name').text(categoryName);
+            $('#product_count').text(productCount);
+            
+            // 如果没有产品，隐藏警告
+            if (productCount == 0) {
+                $('#category_warning').hide();
+            } else {
+                $('#category_warning').show();
+            }
+        });
+    });
+</script>
+{% endblock %}

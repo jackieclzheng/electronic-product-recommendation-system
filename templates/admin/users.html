@@ -1,0 +1,298 @@
+{% extends "layout.html" %}
+
+{% block title %}用户管理 - 电子产品分析与推荐系统{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="admin-users">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="admin-title">用户管理</h2>
+            <p class="text-muted">管理系统中的所有用户账户</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addUserModal">
+                <i class="fas fa-plus"></i> 添加新用户
+            </button>
+        </div>
+    </div>
+
+    <!-- 筛选和搜索 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('admin_users') }}" class="row">
+                <div class="col-md-4 mb-2">
+                    <input type="text" name="username" class="form-control" placeholder="搜索用户名" value="{{ request.args.get('username', '') }}">
+                </div>
+                <div class="col-md-4 mb-2">
+                    <input type="email" name="email" class="form-control" placeholder="搜索邮箱" value="{{ request.args.get('email', '') }}">
+                </div>
+                <div class="col-md-4 mb-2">
+                    <button type="submit" class="btn btn-primary">筛选</button>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-secondary ml-2">重置</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 用户列表 -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>邮箱</th>
+                            <th>注册时间</th>
+                            <th>最后登录</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.register_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-info edit-user" data-id="{{ user.id }}" data-toggle="modal" data-target="#editUserModal">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger delete-user" data-id="{{ user.id }}" data-username="{{ user.username }}" data-toggle="modal" data-target="#deleteUserModal">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分页 -->
+    {% if pagination.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('admin_users', page=pagination.prev_num, **request.args) }}">上一页</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#">上一页</a>
+            </li>
+            {% endif %}
+
+            {% for page in pagination.iter_pages() %}
+                {% if page %}
+                    {% if page != pagination.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin_users', page=page, **request.args) }}">{{ page }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item active">
+                        <a class="page-link" href="#">{{ page }}</a>
+                    </li>
+                    {% endif %}
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#">...</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('admin_users', page=pagination.next_num, **request.args) }}">下一页</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#">下一页</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- 添加用户模态框 -->
+<div class="modal fade" id="addUserModal" tabindex="-1" role="dialog" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addUserModalLabel">添加新用户</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_add_user') }}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="username">用户名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">电子邮箱 <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">密码 <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                        <small class="form-text text-muted">密码长度至少为6位</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">确认密码 <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑用户模态框 -->
+<div class="modal fade" id="editUserModal" tabindex="-1" role="dialog" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">编辑用户</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_edit_user') }}" id="editUserForm">
+                <input type="hidden" name="user_id" id="edit_user_id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit_username">用户名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_email">电子邮箱 <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="edit_email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_password">新密码</label>
+                        <input type="password" class="form-control" id="edit_password" name="password">
+                        <small class="form-text text-muted">如不修改密码，请留空</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存更改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 删除用户确认模态框 -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteUserModalLabel">确认删除</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除用户 "<span id="delete_username"></span>" 吗？</p>
+                <p class="text-danger">此操作不可逆，用户的所有相关数据也将被删除。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <form method="POST" action="{{ url_for('admin_delete_user') }}" id="deleteUserForm">
+                    <input type="hidden" name="user_id" id="delete_user_id">
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // 高亮当前页面在导航中的位置
+        $('.nav-link').removeClass('active');
+        $('.admin-users-link').addClass('active');
+        
+        // 编辑用户
+        $('.edit-user').click(function() {
+            var userId = $(this).data('id');
+            
+            // 通过AJAX获取用户信息
+            $.ajax({
+                url: '/admin/user/' + userId + '/json',
+                type: 'GET',
+                success: function(data) {
+                    // 填充表单
+                    $('#edit_user_id').val(data.id);
+                    $('#edit_username').val(data.username);
+                    $('#edit_email').val(data.email);
+                },
+                error: function() {
+                    alert('获取用户信息失败');
+                }
+            });
+        });
+        
+        // 删除用户
+        $('.delete-user').click(function() {
+            var userId = $(this).data('id');
+            var username = $(this).data('username');
+            
+            $('#delete_user_id').val(userId);
+            $('#delete_username').text(username);
+        });
+        
+        // 表单验证
+        $('#addUserModal form').submit(function(event) {
+            var password = $('#password').val();
+            var confirmPassword = $('#confirm_password').val();
+            
+            if (password.length < 6) {
+                alert('密码长度至少为6位');
+                event.preventDefault();
+                return false;
+            }
+            
+            if (password !== confirmPassword) {
+                alert('两次输入的密码不一致');
+                event.preventDefault();
+                return false;
+            }
+            
+            return true;
+        });
+        
+        $('#editUserForm').submit(function(event) {
+            var password = $('#edit_password').val();
+            
+            if (password && password.length < 6) {
+                alert('密码长度至少为6位');
+                event.preventDefault();
+                return false;
+            }
+            
+            return true;
+        });
+    });
+</script>
+{% endblock %}
