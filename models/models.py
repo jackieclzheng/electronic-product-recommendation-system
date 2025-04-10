@@ -20,7 +20,6 @@ class User(db.Model):
     
     # 关联关系
     behaviors = db.relationship('UserBehavior', backref='user', lazy='dynamic')
-    reviews = db.relationship('UserReview', backref='user', lazy='dynamic')
     
     def __repr__(self):
         return f'<User {self.username}>'
@@ -61,7 +60,9 @@ class Product(db.Model):
     # 关联关系
     sales = db.relationship('ProductSale', backref='product', lazy='dynamic')
     behaviors = db.relationship('UserBehavior', backref='product', lazy='dynamic')
-    reviews = db.relationship('UserReview', backref='product', lazy='dynamic')
+    reviews = db.relationship('UserReview', 
+                               backref=db.backref('reviewed_product', lazy='joined'),
+                               lazy='dynamic')
     
     def __repr__(self):
         return f'<Product {self.name}>'
@@ -109,31 +110,13 @@ class UserBehavior(db.Model):
         return f'<UserBehavior {self.behavior_type}>'
 
 
-# class UserReview(db.Model):
-#     """用户评价模型"""
-#     __tablename__ = 'user_reviews'
-#
-#     id = db.Column(db.Integer, primary_key=True)
-#     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-#     product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
-#     rating = db.Column(db.Integer)  # 1-5星
-#     content = db.Column(db.Text)
-#     sentiment = db.Column(db.Float)  # 情感分析结果
-#     created_at = db.Column(db.DateTime, default=datetime.now)
-#     sentiment_score = db.Column(db.Float)  # 总体情感得分
-#     emotion_dimensions = db.Column(db.Text)  # JSON存储情感维度
-#
-#     def __repr__(self):
-#         return f'<UserReview {self.rating}>'
-
-
 class UserReview(db.Model):
     """用户评价模型"""
     __tablename__ = 'user_reviews'
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     rating = db.Column(db.Integer)  # 1-5星
     content = db.Column(db.Text)
     sentiment = db.Column(db.Float, default=0.0)  # 情感分析结果
@@ -142,8 +125,7 @@ class UserReview(db.Model):
     emotion_dimensions = db.Column(db.Text)  # JSON存储情感维度
 
     # 添加关联关系
-    user = db.relationship('User', backref='reviews')
-    product = db.relationship('Product', backref='reviews')
+    user = db.relationship('User', backref=db.backref('reviews', lazy='dynamic'))
 
     def __repr__(self):
         return f'<UserReview {self.rating}>'

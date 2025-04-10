@@ -10,6 +10,7 @@ import json
 from typing import List, Dict, Any, Tuple, Optional
 import os
 from datetime import datetime, timedelta
+from textblob import TextBlob
 # import matplotlib
 # matplotlib.use('Agg')  # 设置非交互式后端
 #
@@ -364,104 +365,66 @@ class DataAnalysis:
             'chart_url': os.path.join('images', 'charts', chart_filename)
         }
     
-    def analyze_user_reviews(self, product_id: int) -> Dict[str, Any]:
-        """分析用户评价
-        
-        Args:
-            product_id: 产品ID
-            
-        Returns:
-            包含评价分析结果的字典
-        """
-        # 获取产品评价
+    def analyze_user_reviews(self, product_id):
+        """分析产品评论"""
         reviews = UserReview.query.filter_by(product_id=product_id).all()
         
         if not reviews:
             return {
+                'review_count': 0,
                 'average_rating': 0,
-                'rating_counts': [0, 0, 0, 0, 0],
-                'positive_ratio': 0,
-                'chart_url': ''
+                'average_sentiment': 0,
+                'emotion_dimensions': get_default_emotions()
             }
-        
-        # 计算平均评分
-        average_rating = sum(review.rating for review in reviews) / len(reviews)
-        
-        # 统计各评分数量
-        rating_counts = [0, 0, 0, 0, 0]  # 1-5星
-        for review in reviews:
-            if 1 <= review.rating <= 5:
-                rating_counts[review.rating - 1] += 1
-        
-        # 计算正面评价比例 (4-5星)
-        positive_count = rating_counts[3] + rating_counts[4]
-        positive_ratio = positive_count / len(reviews) if reviews else 0
-        
-        # 生成评分分布图
-        plt.figure(figsize=(10, 6))
-        bars = plt.bar(['1星', '2星', '3星', '4星', '5星'], rating_counts, color=['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#27ae60'])
-        plt.xlabel('评分')
-        plt.ylabel('数量')
-        plt.title('产品评分分布')
-        
-        # 在柱状图上添加数量标签
-        for bar in bars:
-            height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                    f'{height}',
-                    ha='center', va='bottom')
-        
-        # 保存图表
-        chart_filename = f'review_analysis_{product_id}_{datetime.now().strftime("%Y%m%d%H%M%S")}.png'
-        chart_path = os.path.join(self.charts_folder, chart_filename)
-        plt.savefig(chart_path)
-        plt.close()
 
-        emotion_dimensions = {
-            'satisfaction': [],
-            'value_for_money': [],
-            'performance': [],
-            'user_experience': []
+        # 初始化统计数据
+        total_emotions = {
+            'positive_emotion': 0.0,
+            'negative_emotion': 0.0,
+            'objectivity': 0.0,
+            'length_factor': 0.0
         }
-
+        
+        valid_reviews = 0
+        total_rating = 0
+        total_sentiment = 0
+        
         for review in reviews:
-            emotions = analyze_review_emotions(review.content)
-            for key, value in emotions.items():
-                emotion_dimensions[key].append(value)
-
-        # 计算平均情感得分
-        avg_emotions = {
-            key: sum(values) / len(values) if values else 0
-            for key, values in emotion_dimensions.items()
-        }
-
-        # 生成情感雷达图
-        plt.figure(figsize=(8, 6))
-        labels = list(avg_emotions.keys())
-        values = list(avg_emotions.values())
-
-        angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False)
-        values = np.concatenate((values, [values[0]]))  # 闭合图形
-        angles = np.concatenate((angles, [angles[0]]))
-
-        plt.polar(angles, values, 'o-', linewidth=2)
-        plt.fill(angles, values, alpha=0.25)
-        plt.xticks(angles[:-1], labels)
-        plt.title('用户评价多维度情感分析')
-
-        # 保存雷达图
-        chart_filename = f'emotion_radar_{product_id}_{datetime.now().strftime("%Y%m%d%H%M%S")}.png'
-        chart_path = os.path.join(self.charts_folder, chart_filename)
-        plt.savefig(chart_path)
-        plt.close()
+            try:
+                total_rating += review.rating
+                total_sentiment += review.sentiment if review.sentiment else 0
+                
+                if review.emotion_dimensions:
+                    emotions = json.loads(review.emotion_dimensions)
+                    for key in total_emotions:
+                        if key in emotions:
+                            total_emotions[key] += float(emotions[key])
+                valid_reviews += 1
+                    
+            except (json.JSONDecodeError, ValueError, TypeError) as e:
+                print(f"处理评论 {review.id} 时出错: {str(e)}")
+                continue
+        
+        # 计算平均值
+        if valid_reviews > 0:
+            average_rating = total_rating / valid_reviews
+            average_sentiment = total_sentiment / valid_reviews
+            
+            for key in total_emotions:
+                total_emotions[key] /= valid_reviews
+        else:
+            average_rating = 0
+            average_sentiment = 0
+        
+        # 生成并保存雷达图
+        chart_url = generate_emotion_radar_chart(total_emotions, product_id)
         
         return {
-            'average_rating': average_rating,
-            'rating_counts': rating_counts,
-            'positive_ratio': positive_ratio,
-            'chart_url': os.path.join('images', 'charts', chart_filename),
-            'emotion_dimensions': avg_emotions,
-            'emotion_chart_url': os.path.join('images', 'charts', chart_filename)
+            'review_count': valid_reviews,
+            'average_rating': round(average_rating, 2),
+            'average_sentiment': round(average_sentiment, 2),
+            'emotion_dimensions': total_emotions,
+            'emotion_chart_url': chart_url
         }
     
     def get_optimal_purchase_plan(self, product_id: int) -> Dict[str, Any]:
@@ -570,50 +533,336 @@ class DataAnalysis:
             'chart_url': os.path.join('images', 'charts', chart_filename)
         }
 
+    def analyze_platform_sales(self) -> Dict[str, Any]:
+        """分析各平台销售数据
+        
+        Returns:
+            包含平台销售数据分析结果的字典
+        """
+        try:
+            # 查询各平台的销售数据
+            platform_sales = db.session.query(
+                Product.platform,
+                func.count(Product.id).label('product_count'),
+                func.sum(ProductSale.sales_volume).label('total_sales'),
+                func.avg(Product.price).label('avg_price')
+            ).join(
+                ProductSale, Product.id == ProductSale.product_id
+            ).group_by(
+                Product.platform
+            ).all()
+
+            # 准备数据
+            platforms = []
+            sales_volumes = []
+            avg_prices = []
+            product_counts = []
+
+            for platform, count, sales, price in platform_sales:
+                platforms.append(platform)
+                product_counts.append(count)
+                sales_volumes.append(int(sales or 0))
+                avg_prices.append(round(float(price or 0), 2))
+
+            # 创建图表
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+            # 销量柱状图
+            bars1 = ax1.bar(platforms, sales_volumes, color='#3498db')
+            ax1.set_title('各平台销量对比')
+            ax1.set_xlabel('平台')
+            ax1.set_ylabel('总销量')
+            # 添加数据标签
+            for bar in bars1:
+                height = bar.get_height()
+                ax1.text(bar.get_x() + bar.get_width()/2., height,
+                        f'{int(height)}',
+                        ha='center', va='bottom')
+
+            # 平均价格柱状图
+            bars2 = ax2.bar(platforms, avg_prices, color='#e74c3c')
+            ax2.set_title('各平台平均价格对比')
+            ax2.set_xlabel('平台')
+            ax2.set_ylabel('平均价格 (元)')
+            # 添加数据标签
+            for bar in bars2:
+                height = bar.get_height()
+                ax2.text(bar.get_x() + bar.get_width()/2., height,
+                        f'¥{height:.2f}',
+                        ha='center', va='bottom')
+
+            plt.tight_layout()
+
+            # 保存图表
+            chart_filename = f'platform_sales_{datetime.now().strftime("%Y%m%d%H%M%S")}.png'
+            chart_path = os.path.join(self.charts_folder, chart_filename)
+            plt.savefig(chart_path)
+            plt.close()
+
+            return {
+                'platforms': platforms,
+                'sales_volumes': sales_volumes,
+                'avg_prices': avg_prices,
+                'product_counts': product_counts,
+                'chart_url': os.path.join('images', 'charts', chart_filename),
+                'total_products': sum(product_counts),
+                'total_sales': sum(sales_volumes),
+                'avg_total_price': round(sum(avg_prices) / len(avg_prices), 2) if avg_prices else 0
+            }
+            
+        except Exception as e:
+            print(f"分析平台销售数据时出错: {str(e)}")
+            return {
+                'error': f"分析失败: {str(e)}",
+                'platforms': [],
+                'sales_volumes': [],
+                'avg_prices': [],
+                'product_counts': [],
+                'chart_url': '',
+                'total_products': 0,
+                'total_sales': 0,
+                'avg_total_price': 0
+            }
+
+    def analyze_user_behavior(self) -> Dict[str, Any]:
+        """分析用户行为数据
+        
+        Returns:
+            包含用户行为分析结果的字典
+        """
+        try:
+            # 查询用户行为数据
+            behaviors = db.session.query(
+                UserBehavior.behavior_type,
+                func.count(UserBehavior.id).label('count')
+            ).group_by(
+                UserBehavior.behavior_type
+            ).all()
+
+            # 准备数据
+            behavior_types = []
+            counts = []
+
+            for behavior_type, count in behaviors:
+                behavior_types.append(behavior_type)
+                counts.append(count)
+
+            # 创建图表
+            plt.figure(figsize=(10, 6))
+            
+            # 创建饼图
+            plt.pie(counts, labels=behavior_types, autopct='%1.1f%%',
+                    colors=['#3498db', '#e74c3c', '#2ecc71', '#f1c40f'])
+            plt.title('用户行为分布')
+            
+            # 保存图表
+            chart_filename = f'user_behavior_{datetime.now().strftime("%Y%m%d%H%M%S")}.png'
+            chart_path = os.path.join(self.charts_folder, chart_filename)
+            plt.savefig(chart_path)
+            plt.close()
+
+            # 计算转化率
+            conversion_rates = {}
+            total_users = len(set(db.session.query(UserBehavior.user_id).all()))
+            
+            if total_users > 0:
+                for behavior_type, count in behaviors:
+                    conversion_rates[behavior_type] = round((count / total_users) * 100, 2)
+
+            return {
+                'behavior_types': behavior_types,
+                'counts': counts,
+                'total_behaviors': sum(counts),
+                'conversion_rates': conversion_rates,
+                'chart_url': os.path.join('images', 'charts', chart_filename),
+                'total_users': total_users,
+                'behavior_distribution': dict(zip(behavior_types, counts))
+            }
+            
+        except Exception as e:
+            print(f"分析用户行为数据时出错: {str(e)}")
+            return {
+                'error': f"分析失败: {str(e)}",
+                'behavior_types': [],
+                'counts': [],
+                'total_behaviors': 0,
+                'conversion_rates': {},
+                'chart_url': '',
+                'total_users': 0,
+                'behavior_distribution': {}
+            }
+
+    def analyze_product_categories(self) -> Dict[str, Any]:
+        """分析产品分类数据
+        
+        Returns:
+            包含产品分类分析结果的字典
+        """
+        try:
+            # 查询各分类的产品数量和销量数据
+            category_stats = db.session.query(
+                ProductCategory.name,
+                func.count(Product.id).label('product_count'),
+                func.sum(ProductSale.sales_volume).label('total_sales'),
+                func.avg(Product.price).label('avg_price')
+            ).join(
+                Product, ProductCategory.id == Product.category_id
+            ).join(
+                ProductSale, Product.id == ProductSale.product_id
+            ).group_by(
+                ProductCategory.name
+            ).all()
+
+            # 准备数据
+            categories = []
+            product_counts = []
+            sales_volumes = []
+            avg_prices = []
+
+            for name, count, sales, price in category_stats:
+                categories.append(name)
+                product_counts.append(count)
+                sales_volumes.append(int(sales or 0))
+                avg_prices.append(round(float(price or 0), 2))
+
+            # 创建多子图
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+
+            # 产品数量分布饼图
+            ax1.pie(product_counts, labels=categories, autopct='%1.1f%%',
+                    colors=['#3498db', '#e74c3c', '#2ecc71', '#f1c40f'])
+            ax1.set_title('各分类产品数量分布')
+
+            # 销量柱状图
+            bars2 = ax2.bar(categories, sales_volumes, color='#3498db')
+            ax2.set_title('各分类总销量对比')
+            ax2.set_xlabel('分类')
+            ax2.set_ylabel('总销量')
+            plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45)
+            # 添加数据标签
+            for bar in bars2:
+                height = bar.get_height()
+                ax2.text(bar.get_x() + bar.get_width()/2., height,
+                        f'{int(height)}',
+                        ha='center', va='bottom')
+
+            # 平均价格柱状图
+            bars3 = ax3.bar(categories, avg_prices, color='#e74c3c')
+            ax3.set_title('各分类平均价格对比')
+            ax3.set_xlabel('分类')
+            ax3.set_ylabel('平均价格 (元)')
+            plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45)
+            # 添加数据标签
+            for bar in bars3:
+                height = bar.get_height()
+                ax3.text(bar.get_x() + bar.get_width()/2., height,
+                        f'¥{height:.2f}',
+                        ha='center', va='bottom')
+
+            plt.tight_layout()
+
+            # 保存图表
+            chart_filename = f'category_analysis_{datetime.now().strftime("%Y%m%d%H%M%S")}.png'
+            chart_path = os.path.join(self.charts_folder, chart_filename)
+            plt.savefig(chart_path)
+            plt.close()
+
+            return {
+                'categories': categories,
+                'product_counts': product_counts,
+                'sales_volumes': sales_volumes,
+                'avg_prices': avg_prices,
+                'chart_url': os.path.join('images', 'charts', chart_filename),
+                'total_products': sum(product_counts),
+                'total_sales': sum(sales_volumes),
+                'avg_total_price': round(sum(avg_prices) / len(avg_prices), 2) if avg_prices else 0,
+                'category_distribution': dict(zip(categories, product_counts))
+            }
+            
+        except Exception as e:
+            print(f"分析产品分类数据时出错: {str(e)}")
+            return {
+                'error': f"分析失败: {str(e)}",
+                'categories': [],
+                'product_counts': [],
+                'sales_volumes': [],
+                'avg_prices': [],
+                'chart_url': '',
+                'total_products': 0,
+                'total_sales': 0,
+                'avg_total_price': 0,
+                'category_distribution': {}
+            }
+
 
 def analyze_review_emotions(review_text):
-    """
-    分析评论的多维度情感
+    """分析评论文本的情感"""
+    try:
+        blob = TextBlob(review_text)
+        # 获取情感极性（-1到1之间）
+        polarity = blob.sentiment.polarity
+        # 获取主观性分数（0到1之间）
+        subjectivity = blob.sentiment.subjectivity
+        
+        return {
+            'polarity': polarity,
+            'subjectivity': subjectivity,
+            'is_positive': polarity > 0,
+            'is_negative': polarity < 0,
+            'is_neutral': abs(polarity) < 0.1
+        }
+    except Exception as e:
+        print(f"情感分析出错: {str(e)}")
+        return {
+            'polarity': 0,
+            'subjectivity': 0.5,
+            'is_positive': False,
+            'is_negative': False,
+            'is_neutral': True
+        }
 
-    维度：
-    1. 满意度 (Satisfaction)
-    2. 性价比 (Value for Money)
-    3. 产品性能 (Performance)
-    4. 用户体验 (User Experience)
-
-    返回各维度得分 (-1 到 1 之间)
-    """
-    # 使用TextBlob进行基础情感分析
-    blob = TextBlob(review_text)
-    overall_sentiment = blob.sentiment.polarity
-
-    # 根据关键词和上下文分析不同维度
-    emotions = {
-        'satisfaction': overall_sentiment,
-        'value_for_money': _analyze_value_dimension(review_text),
-        'performance': _analyze_performance_dimension(review_text),
-        'user_experience': _analyze_experience_dimension(review_text)
-    }
-
-    return emotions
-
-
-def _analyze_value_dimension(text):
-    """分析性价比维度"""
-    value_keywords = ['便宜', '划算', '性价比', '价格', '贵', '实惠']
-    score = sum(1 for keyword in value_keywords if keyword in text) / len(value_keywords)
-    return score * (1 if '好' in text else -1)
-
-
-def _analyze_performance_dimension(text):
-    """分析性能维度"""
-    performance_keywords = ['快', '强', '性能', '配置', '流畅', '卡', '慢']
-    score = sum(1 for keyword in performance_keywords if keyword in text) / len(performance_keywords)
-    return score * (1 if '好' in text else -1)
-
-
-def _analyze_experience_dimension(text):
-    """分析用户体验维度"""
-    experience_keywords = ['好用', '方便', '舒服', '不错', '麻烦', '复杂']
-    score = sum(1 for keyword in experience_keywords if keyword in text) / len(experience_keywords)
-    return score * (1 if '好' in text else -1)
+def generate_emotion_radar_chart(emotion_dimensions, product_id):
+    """生成情感雷达图"""
+    # 创建图形
+    plt.figure(figsize=(8, 8))
+    
+    # 雷达图的角度
+    categories = ['积极情感', '消极情感', '客观程度', '评价详细度']
+    num_vars = len(categories)
+    
+    # 计算角度
+    angles = [n / float(num_vars) * 2 * np.pi for n in range(num_vars)]
+    angles += angles[:1]
+    
+    # 初始化雷达图
+    ax = plt.subplot(111, projection='polar')
+    
+    # 获取数值
+    values = [
+        emotion_dimensions.get('positive_emotion', 0),
+        emotion_dimensions.get('negative_emotion', 0),
+        emotion_dimensions.get('objectivity', 0),
+        emotion_dimensions.get('length_factor', 0)
+    ]
+    values += values[:1]
+    
+    # 绘制图形
+    ax.plot(angles, values, 'o-', linewidth=2, label='情感得分')
+    ax.fill(angles, values, alpha=0.25)
+    
+    # 设置角度标签
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(categories)
+    
+    # 设置标题
+    plt.title('产品评价情感分析雷达图', pad=20)
+    
+    # 确保static/images目录存在
+    os.makedirs('static/images/emotion_charts', exist_ok=True)
+    
+    # 保存图片
+    chart_path = f'images/emotion_charts/emotion_radar_{product_id}.png'
+    plt.savefig(f'static/{chart_path}')
+    plt.close()
+    
+    return chart_path

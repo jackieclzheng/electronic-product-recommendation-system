@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+
+{% block title %}搜索结果 - {{ query }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h4 class="mb-4">搜索结果: "{{ query }}"</h4>
+    
+    {% if products %}
+    <div class="row">
+        {% for product in products %}
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ product.name }}</h5>
+                    <p class="text-danger">¥{{ product.price }}</p>
+                    <p class="text-muted">{{ product.platform }}</p>
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}" 
+                       class="btn btn-sm btn-primary">查看详情</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <h5>未找到相关商品</h5>
+        <p class="text-muted">请尝试其他关键词</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

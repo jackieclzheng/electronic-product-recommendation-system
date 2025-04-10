@@ -1,0 +1,247 @@
+{% extends "layout.html" %}
+
+{% block title %}数据分析 - 管理后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">数据分析面板</h2>
+
+    <!-- 平台销售分析 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">平台销售分析</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stats-card bg-primary text-white p-3 rounded">
+                        <h6>总商品数</h6>
+                        <h3>1,234</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card bg-success text-white p-3 rounded">
+                        <h6>总销量</h6>
+                        <h3>45,678</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card bg-info text-white p-3 rounded">
+                        <h6>平均价格</h6>
+                        <h3>¥2,999</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <canvas id="platformSalesChart"></canvas>
+                </div>
+                <div class="col-md-6">
+                    <canvas id="platformPriceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户行为分析 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">用户行为分析</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stats-card bg-warning text-dark p-3 rounded">
+                        <h6>总用户数</h6>
+                        <h3>5,678</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card bg-danger text-white p-3 rounded">
+                        <h6>总行为数</h6>
+                        <h3>23,456</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <h6>行为转化率：</h6>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar bg-success" style="width: 85%">浏览: 85%</div>
+                </div>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar bg-info" style="width: 45%">收藏: 45%</div>
+                </div>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar bg-warning" style="width: 30%">加购: 30%</div>
+                </div>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar bg-danger" style="width: 15%">购买: 15%</div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <canvas id="behaviorChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 产品分类分析 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">产品分类分析</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="stats-card bg-primary text-white p-3 rounded">
+                        <h6>总产品数</h6>
+                        <h3>789</h3>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stats-card bg-success text-white p-3 rounded">
+                        <h6>总销量</h6>
+                        <h3>12,345</h3>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stats-card bg-info text-white p-3 rounded">
+                        <h6>平均价格</h6>
+                        <h3>¥3,499</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.stats-card {
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stats-card h6 {
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+}
+
+.stats-card h3 {
+    margin-bottom: 0;
+    font-weight: bold;
+}
+
+.progress {
+    border-radius: 15px;
+}
+
+.progress-bar {
+    background-color: #007bff;
+    color: white;
+    padding: 0 15px;
+    font-weight: 500;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 平台销售数据图表
+new Chart(document.getElementById('platformSalesChart'), {
+    type: 'bar',
+    data: {
+        labels: ['京东', '天猫', '苏宁', '拼多多'],
+        datasets: [{
+            label: '销售量',
+            data: [15000, 12000, 8000, 10000],
+            backgroundColor: '#3498db'
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: '各平台销量对比'
+            }
+        }
+    }
+});
+
+// 平台价格对比图表
+new Chart(document.getElementById('platformPriceChart'), {
+    type: 'bar',
+    data: {
+        labels: ['京东', '天猫', '苏宁', '拼多多'],
+        datasets: [{
+            label: '平均价格',
+            data: [3299, 3599, 3199, 2899],
+            backgroundColor: '#e74c3c'
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: '各平台均价对比'
+            }
+        }
+    }
+});
+
+// 用户行为分析饼图
+new Chart(document.getElementById('behaviorChart'), {
+    type: 'pie',
+    data: {
+        labels: ['浏览', '收藏', '加购', '购买'],
+        datasets: [{
+            data: [85, 45, 30, 15],
+            backgroundColor: ['#2ecc71', '#3498db', '#f1c40f', '#e74c3c']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: '用户行为分布'
+            }
+        }
+    }
+});
+
+// 产品分类分析图表
+new Chart(document.getElementById('categoryChart'), {
+    type: 'radar',
+    data: {
+        labels: ['手机', '平板', '笔记本'],
+        datasets: [{
+            label: '销量',
+            data: [5000, 3000, 4000],
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52, 152, 219, 0.2)'
+        }, {
+            label: '评分',
+            data: [4.5, 4.2, 4.8],
+            borderColor: '#e74c3c',
+            backgroundColor: 'rgba(231, 76, 60, 0.2)'
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: '分类数据分析'
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

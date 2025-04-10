@@ -4,40 +4,45 @@ import os
 import json
 import random
 from datetime import datetime, timedelta
+from textblob import TextBlob
+import jieba
 
 # 确保可以导入项目模块
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import app
-from models.models import db, User, Product, ProductCategory, UserReview
+from models.models import db, User, Product, ProductCategory, UserReview, ProductSale, PlatformDiscount
+from werkzeug.security import generate_password_hash
 
 
 def generate_sentiment_analysis(review_content):
     """
-    简单的情感分析模拟函数
-    根据关键词和长度模拟情感分数和维度
+    中文情感分析函数
     """
     # 正面词汇
     positive_words = ['好', '棒', '优秀', '喜欢', '不错', '高端', '性价比', '推荐']
     # 负面词汇
     negative_words = ['差', '不好', '一般', '失望', '问题', '坏', '不推荐']
-
+    
+    # 分词
+    words = jieba.lcut(review_content)
+    
     # 计算情感得分
-    positive_count = sum(1 for word in positive_words if word in review_content)
-    negative_count = sum(1 for word in negative_words if word in review_content)
-
+    positive_count = sum(1 for word in words if word in positive_words)
+    negative_count = sum(1 for word in words if word in negative_words)
+    
     # 情感得分计算
-    sentiment_score = (positive_count - negative_count) / (positive_count + negative_count + 1)
-    sentiment_score = max(-1, min(1, sentiment_score))  # 限制在-1到1之间
-
-    # 情感维度（模拟）
+    total_count = positive_count + negative_count + 1
+    sentiment_score = (positive_count - negative_count) / total_count
+    sentiment_score = max(-1, min(1, sentiment_score))
+    
     emotion_dimensions = {
         'positive_emotion': max(0, sentiment_score),
         'negative_emotion': max(0, -sentiment_score),
-        'length_factor': min(1, len(review_content) / 50),
-        'objectivity': 1 - abs(sentiment_score)
+        'objectivity': 1 - abs(sentiment_score),
+        'length_factor': min(1, len(review_content) / 50)
     }
-
+    
     return sentiment_score, emotion_dimensions
 
 
@@ -121,5 +126,63 @@ def seed_reviews():
         print(f"成功生成 {len(reviews_to_add)} 条产品评价")
 
 
+def seed_incremental_data():
+    """增量添加测试数据，不清空现有数据"""
+    print("开始添加增量测试数据...")
+    
+    # 获取现有数据的ID范围
+    max_user_id = db.session.query(db.func.max(User.id)).scalar() or 0
+    max_product_id = db.session.query(db.func.max(Product.id)).scalar() or 0
+    
+    # 从现有最大ID开始创建新数据
+    new_users = []
+    for i in range(max_user_id + 1, max_user_id + 11):  # 添加10个新用户
+        user = User(
+            username=f'new_user{i}',
+            email=f'new_user{i}@example.com',
+            password_hash=generate_password_hash(f'password{i}'),
+            register_time=datetime.now()
+        )
+        db.session.add(user)
+        new_users.append(user)
+    
+    db.session.commit()
+    print(f"已添加 {len(new_users)} 个新用户")
+
+    # 获取所有现有产品
+    existing_products = Product.query.all()
+    
+    # 为新用户添加评论和行为数据
+    total_new_reviews = 0
+    for user in new_users:
+        # 为每个新用户随机选择5-10个产品评论
+        review_products = random.sample(existing_products, 
+                                     min(random.randint(5, 10), len(existing_products)))
+        
+        for product in review_products:
+            # 创建新的评论
+            review = UserReview(
+                user_id=user.id,
+                product_id=product.id,
+                rating=random.randint(1, 5),
+                content=f"新用户评价内容 - {user.username}",
+                created_at=datetime.now()
+            )
+            db.session.add(review)
+            total_new_reviews += 1
+            
+    db.session.commit()
+    print(f"已添加 {total_new_reviews} 条新评论")
+    
+    print("增量数据添加完成！")
+
+
+def seed_data(app):
+    """填充增量数据"""
+    with app.app_context():
+        seed_incremental_data()
+
+
 if __name__ == '__main__':
-    seed_reviews()
+    from app import app
+    seed_data(app)

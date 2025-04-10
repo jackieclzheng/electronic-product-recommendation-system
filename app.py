@@ -10,15 +10,26 @@ from functools import wraps
 import json
 import pandas as pd
 from datetime import datetime, timedelta
+from sqlalchemy import or_
 
 # 导入自定义模块
+# from models.models import db, init_db, User, Product, ProductCategory, UserBehavior, UserReview
+# from .models.models import db, init_db, User, Product, ProductCategory, UserBehavior, UserReview
 from models.models import db, init_db, User, Product, ProductCategory, UserBehavior, UserReview
 from analysis.data_analysis import DataAnalysis
 from recommendation.recommender import ProductRecommender
+from config import Config
 
 # 创建Flask应用
 app = Flask(__name__)
-CORS(app)  # 启用跨域支持
+app.config.from_object(Config)
+CORS(app)
+
+# 初始化应用配置
+Config.init_app(app)
+
+# 确保静态文件目录存在
+os.makedirs(os.path.join(app.static_folder, 'images/emotion_charts'), exist_ok=True)
 
 # 配置
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -136,41 +147,6 @@ def register():
     
     return render_template('register.html')
 
-# @app.route('/login', methods=['GET', 'POST'])
-# def login():
-#     """用户登录"""
-#     if request.method == 'POST':
-#         username = request.form.get('username')
-#         password = request.form.get('password')
-#         remember = request.form.get('remember')
-#
-#         user = User.query.filter_by(username=username).first()
-#
-#         if user and check_password_hash(user.password_hash, password):
-#             session['user_id'] = user.id
-#             session['username'] = user.username
-#
-#             # 如果选择了"记住我"，设置更长的session过期时间
-#             if remember:
-#                 # 设置session有效期为30天
-#                 session.permanent = True
-#                 app.permanent_session_lifetime = timedelta(days=30)
-#             else:
-#                 # 默认session过期时间
-#                 session.permanent = False
-#
-#             # 更新最后登录时间
-#             user.last_login = datetime.now()
-#             db.session.commit()
-#
-#             flash('登录成功', 'success')
-#             return redirect(url_for('index'))
-#         else:
-#             flash('用户名或密码错误', 'danger')
-#
-#     return render_template('login.html')
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -261,92 +237,83 @@ def products():
 
 @app.route('/product/<int:product_id>')
 def product_detail(product_id):
-    """产品详情页面"""
-    product = Product.query.get_or_404(product_id)
-    
-    # 获取产品规格
-    specs = {}
-    if product.spec_json:
-        try:
-            specs = json.loads(product.spec_json)
-        except:
-            pass
-    
-    # 获取产品评价
-    reviews = UserReview.query.filter_by(product_id=product_id).order_by(UserReview.created_at.desc()).limit(10).all()
-    
-    # 获取相似产品推荐
-    similar_products = recommender.get_similar_products(product_id, 4)
-    
-    # 获取价格趋势
-    price_trend = data_analysis.get_price_trend(product_id)
-    
-    # 获取平台价格对比
-    platform_compare = data_analysis.compare_platform_prices(product.name)
-    
-    # 获取评价分析
-    review_analysis = data_analysis.analyze_user_reviews(product_id)
-    
-    # 获取最优购买方案
-    optimal_plans = data_analysis.get_optimal_purchase_plan(product_id)
-    
-    # 记录用户浏览行为（如果已登录）
-    if 'user_id' in session:
-        user_behavior = UserBehavior(
-            user_id=session['user_id'],
-            product_id=product_id,
-            behavior_type='浏览',
-            created_at=datetime.now()
-        )
-        db.session.add(user_behavior)
-        db.session.commit()
-    
-    return render_template('product_detail.html',
-                          product=product,
-                          specs=specs,
-                          reviews=reviews,
-                          similar_products=similar_products,
-                          price_trend=price_trend,
-                          platform_compare=platform_compare,
-                          review_analysis=review_analysis,
-                          optimal_plans=optimal_plans)
+    try:
+        # 获取产品信息
+        product = Product.query.get_or_404(product_id)
+        
+        # 获取所有分类，用于导航栏
+        categories = ProductCategory.query.all()
+        
+        # 获取产品规格
+        specs = {}
+        if product.spec_json:
+            try:
+                specs = json.loads(product.spec_json)
+            except:
+                pass
+        
+        # 获取产品评价
+        reviews = UserReview.query.filter_by(product_id=product_id).order_by(UserReview.created_at.desc()).limit(10).all()
+        
+        # 获取相似产品推荐
+        similar_products = recommender.get_similar_products(product_id, 4)
+        
+        # 获取价格趋势
+        price_trend = data_analysis.get_price_trend(product_id)
+        
+        # 获取平台价格对比
+        platform_compare = data_analysis.compare_platform_prices(product.name)
+        
+        # 获取评价分析
+        review_analysis = data_analysis.analyze_user_reviews(product_id)
+        
+        # 获取最优购买方案
+        optimal_plans = data_analysis.get_optimal_purchase_plan(product_id)
+        
+        # 记录用户浏览行为（如果已登录）
+        if 'user_id' in session:
+            user_behavior = UserBehavior(
+                user_id=session['user_id'],
+                product_id=product_id,
+                behavior_type='浏览',
+                created_at=datetime.now()
+            )
+            db.session.add(user_behavior)
+            db.session.commit()
+        
+        return render_template('product_detail.html',
+                             product=product,
+                             categories=categories,  # 添加分类数据
+                             reviews=reviews,
+                             specs=specs,
+                             price_trend=price_trend,
+                             platform_compare=platform_compare,
+                             optimal_plans=optimal_plans,
+                             review_analysis=review_analysis,
+                             similar_products=similar_products)
+    except Exception as e:
+        print(f"获取产品详情时出错: {str(e)}")
+        return render_template('error.html', error="获取产品详情失败")
 
 @app.route('/category/<int:category_id>')
 def category_products(category_id):
-    """分类页面"""
-    category = ProductCategory.query.get_or_404(category_id)
-    
-    # 获取该分类下的产品
-    page = request.args.get('page', 1, type=int)
-    per_page = 20
-    pagination = Product.query.filter_by(category_id=category_id).paginate(page=page, per_page=per_page, error_out=False)
-    products = pagination.items
-    
-    # 获取推荐产品
-    recommended_products = []
-    if 'user_id' in session:
-        # 获取用户最近浏览的该类别产品
-        recent_behaviors = UserBehavior.query.join(Product).filter(
-            UserBehavior.user_id == session['user_id'],
-            Product.category_id == category_id
-        ).order_by(UserBehavior.created_at.desc()).limit(5).all()
+    try:
+        # 获取当前分类
+        current_category = ProductCategory.query.get_or_404(category_id)
         
-        # 基于最近浏览产品推荐
-        for behavior in recent_behaviors:
-            similar = recommender.get_similar_products(behavior.product_id, 2)
-            for product in similar:
-                if product not in recommended_products:
-                    recommended_products.append(product)
-                    if len(recommended_products) >= 4:
-                        break
-            if len(recommended_products) >= 4:
-                break
-    
-    return render_template('category.html',
-                          category=category,
-                          products=products,
-                          pagination=pagination,
-                          recommended_products=recommended_products)
+        # 获取所有分类用于导航
+        categories = ProductCategory.query.all()
+        
+        # 获取该分类下的产品
+        products = Product.query.filter_by(category_id=category_id).all()
+        
+        return render_template('category.html',
+                             current_category=current_category,
+                             categories=categories,  # 添加分类数据
+                             products=products)
+    except Exception as e:
+        print(f"获取分类产品时出错: {str(e)}")
+        return render_template('error.html', error="获取分类产品失败")
 
 @app.route('/user/profile')
 @login_required
@@ -1015,3 +982,21 @@ def submit_review():
 
     flash('评价提交成功，感谢您的反馈！', 'success')
     return redirect(url_for('product_detail', product_id=product_id))
+
+@app.route('/search')
+def search():
+    query = request.args.get('q', '')
+    if query:
+        # 只搜索名称
+        products = Product.query.filter(
+            Product.name.ilike(f'%{query}%')
+        ).all()
+    else:
+        products = []
+        
+    return render_template('search_results.html',
+                         query=query,
+                         products=products)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)
