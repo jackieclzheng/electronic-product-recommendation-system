@@ -320,31 +320,26 @@ def category_products(category_id):
 def user_profile():
     """用户个人中心"""
     user = User.query.get(session['user_id'])
-    
-    # 获取用户行为数据
+    categories = ProductCategory.query.all()  # 添加分类数据获取
     behaviors = UserBehavior.query.filter_by(user_id=user.id).order_by(UserBehavior.created_at.desc()).limit(20).all()
     
-    # 获取用户评价
-    reviews = UserReview.query.filter_by(user_id=user.id).order_by(UserReview.created_at.desc()).all()
-    
     return render_template('user_profile.html',
-                          user=user,
-                          behaviors=behaviors,
-                          reviews=reviews)
+                         user=user,
+                         behaviors=behaviors,
+                         categories=categories)  # 传递分类数据
 
 @app.route('/user/favorites')
 @login_required
 def user_favorites():
     """用户收藏"""
     user_id = session['user_id']
+    categories = ProductCategory.query.all()  # 添加分类数据获取
     
-    # 获取用户收藏的产品
     favorites = UserBehavior.query.filter_by(
         user_id=user_id,
         behavior_type='收藏'
     ).order_by(UserBehavior.created_at.desc()).all()
     
-    # 获取产品详情
     favorite_products = []
     for favorite in favorites:
         product = Product.query.get(favorite.product_id)
@@ -355,7 +350,8 @@ def user_favorites():
             })
     
     return render_template('user_favorites.html',
-                          favorite_products=favorite_products)
+                         favorite_products=favorite_products,
+                         categories=categories)  # 传递分类数据
 
 @app.route('/api/favorite/<int:product_id>', methods=['POST'])
 @login_required
@@ -394,29 +390,35 @@ def about():
     return render_template('about.html')
 
 # 管理员后台路由
-@app.route('/admin')
+@app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
-    """管理员仪表盘"""
-    # 统计数据admin_dash
-    product_count = Product.query.count()
-    user_count = User.query.count()
-    review_count = UserReview.query.count()
-    category_count = ProductCategory.query.count()
-    
-    # 最近注册用户
-    recent_users = User.query.order_by(User.register_time.desc()).limit(5).all()
-    
-    # 最近添加的产品
-    recent_products = Product.query.order_by(Product.created_at.desc()).limit(5).all()
-    
-    return render_template('admin/dashboard.html',
-                          product_count=product_count,
-                          user_count=user_count,
-                          review_count=review_count,
-                          category_count=category_count,
-                          recent_users=recent_users,
-                          recent_products=recent_products)
+    try:
+        # 获取统计数据
+        user_count = User.query.count()
+        product_count = Product.query.count()
+        category_count = ProductCategory.query.count()
+        review_count = UserReview.query.count()  # 使用 UserReview 而不是 Review
+        
+        # 获取最近用户和产品
+        recent_users = User.query.order_by(User.register_time.desc()).limit(5).all()
+        recent_products = Product.query.order_by(Product.created_at.desc()).limit(5).all()
+        
+        # 获取所有分类
+        categories = ProductCategory.query.all()
+        
+        # 返回模板
+        return render_template('admin/dashboard.html',
+                             user_count=user_count,
+                             product_count=product_count,
+                             category_count=category_count,
+                             review_count=review_count,
+                             recent_users=recent_users,
+                             recent_products=recent_products,
+                             categories=categories)
+    except Exception as e:
+        flash(f'获取仪表盘数据失败: {str(e)}', 'error')
+        return redirect(url_for('index'))
 
 @app.route('/admin/products')
 @admin_required
@@ -630,26 +632,26 @@ def admin_delete_product():
 @admin_required
 def admin_users():
     """管理员用户管理"""
-    # 获取筛选参数
+    categories = ProductCategory.query.all()  # 添加分类数据获取
+    
     username = request.args.get('username')
     email = request.args.get('email')
-    
-    # 构建查询
     query = User.query
     
     if username:
         query = query.filter(User.username.like(f'%{username}%'))
-    
     if email:
         query = query.filter(User.email.like(f'%{email}%'))
     
-    # 分页
     page = request.args.get('page', 1, type=int)
     per_page = 10
     pagination = query.order_by(User.id).paginate(page=page, per_page=per_page, error_out=False)
     users = pagination.items
     
-    return render_template('admin/users.html', users=users, pagination=pagination)
+    return render_template('admin/users.html',
+                         users=users,
+                         pagination=pagination,
+                         categories=categories)  # 传递分类数据
 
 @app.route('/admin/user/<int:user_id>/json')
 @admin_required
@@ -924,28 +926,21 @@ def admin_delete_category():
 @admin_required
 def admin_analysis():
     """管理员数据分析"""
-    # 优惠券效果分析
+    categories = ProductCategory.query.all()  # 添加分类数据获取
+    
     discount_effect = data_analysis.analyze_discount_effect()
-    
-    # 叠加优惠分析
     stackable_effect = data_analysis.analyze_stackable_discounts()
-    
-    # 平台销量分析
     platform_sales = data_analysis.analyze_platform_sales()
-    
-    # 用户行为分析
     user_behavior = data_analysis.analyze_user_behavior()
-    
-    # 产品类别分析
     category_analysis = data_analysis.analyze_product_categories()
     
     return render_template('admin/analysis.html',
-                          discount_effect=discount_effect,
-                          stackable_effect=stackable_effect,
-                          platform_sales=platform_sales,
-                          user_behavior=user_behavior,
-                          category_analysis=category_analysis)
-
+                         discount_effect=discount_effect,
+                         stackable_effect=stackable_effect,
+                         platform_sales=platform_sales,
+                         user_behavior=user_behavior,
+                         category_analysis=category_analysis,
+                         categories=categories)  # 传递分类数据
 
 @app.route('/submit_review', methods=['POST'])
 @login_required
@@ -986,17 +981,19 @@ def submit_review():
 @app.route('/search')
 def search():
     query = request.args.get('q', '')
-    if query:
-        # 只搜索名称
-        products = Product.query.filter(
-            Product.name.ilike(f'%{query}%')
-        ).all()
-    else:
-        products = []
-        
+    
+    # 获取所有分类用于导航
+    categories = ProductCategory.query.all()
+    
+    # 构建查询
+    products = Product.query.filter(
+        Product.name.ilike(f'%{query}%')
+    ).all()
+    
     return render_template('search_results.html',
                          query=query,
-                         products=products)
+                         products=products,
+                         categories=categories)  # 添加分类数据
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)

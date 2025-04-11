@@ -58,40 +58,6 @@
                 {% endif %}
             </div>
         </div>
-        
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">我的评价</h4>
-            </div>
-            <div class="card-body">
-                {% if reviews %}
-                <div class="list-group">
-                    {% for review in reviews %}
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">评价 #{{ loop.index }}</h5>
-                            <small>{{ review.created_at.strftime('%Y-%m-%d') }}</small>
-                        </div>
-                        <div class="rating mb-2">
-                            {% for i in range(5) %}
-                            <i class="{% if i < review.rating %}fas{% else %}far{% endif %} fa-star text-warning"></i>
-                            {% endfor %}
-                        </div>
-                        <p class="mb-1">{{ review.content }}</p>
-                        <small class="text-muted">
-                            <a href="{{ url_for('product_detail', product_id=review.product_id) }}">查看产品 #{{ review.product_id }}</a>
-                        </small>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-4">
-                    <i class="far fa-comment-dots fa-3x text-muted mb-3"></i>
-                    <p class="lead">暂无评价记录</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}

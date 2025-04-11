@@ -83,43 +83,40 @@
     {% if pagination.pages > 1 %}
     <nav class="mt-4">
         <ul class="pagination justify-content-center">
-            {% if pagination.has_prev %}
-            <li class="page-item">
-                <a class="page-link" href="{{ url_for('admin_users', page=pagination.prev_num, **request.args) }}">上一页</a>
+            <!-- 上一页 -->
+            <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                <a class="page-link" href="{{ url_for('admin_users', page=pagination.prev_num, 
+                    username=request.args.get('username', ''),
+                    email=request.args.get('email', '')) if pagination.has_prev else '#' }}">
+                    上一页
+                </a>
             </li>
-            {% else %}
-            <li class="page-item disabled">
-                <a class="page-link" href="#">上一页</a>
-            </li>
-            {% endif %}
 
+            <!-- 页码 -->
             {% for page in pagination.iter_pages() %}
                 {% if page %}
-                    {% if page != pagination.page %}
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('admin_users', page=page, **request.args) }}">{{ page }}</a>
+                    <li class="page-item {{ 'active' if page == pagination.page }}">
+                        <a class="page-link" href="{{ url_for('admin_users', page=page,
+                            username=request.args.get('username', ''),
+                            email=request.args.get('email', '')) }}">
+                            {{ page }}
+                        </a>
                     </li>
-                    {% else %}
-                    <li class="page-item active">
-                        <a class="page-link" href="#">{{ page }}</a>
-                    </li>
-                    {% endif %}
                 {% else %}
-                <li class="page-item disabled">
-                    <a class="page-link" href="#">...</a>
-                </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
                 {% endif %}
             {% endfor %}
 
-            {% if pagination.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="{{ url_for('admin_users', page=pagination.next_num, **request.args) }}">下一页</a>
+            <!-- 下一页 -->
+            <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                <a class="page-link" href="{{ url_for('admin_users', page=pagination.next_num,
+                    username=request.args.get('username', ''),
+                    email=request.args.get('email', '')) if pagination.has_next else '#' }}">
+                    下一页
+                </a>
             </li>
-            {% else %}
-            <li class="page-item disabled">
-                <a class="page-link" href="#">下一页</a>
-            </li>
-            {% endif %}
         </ul>
     </nav>
     {% endif %}

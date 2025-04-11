@@ -40,13 +40,20 @@
                         <a class="nav-link" href="{{ url_for('index') }}">首页</a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" 
+                           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             产品分类
                         </a>
-                        <div class="dropdown-menu">
-                            {% for category in categories %}
-                            <a class="dropdown-item" href="{{ url_for('category_products', category_id=category.id) }}">{{ category.name }}</a>
-                            {% endfor %}
+                        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            {% if categories %}
+                                {% for category in categories %}
+                                    <a class="dropdown-item" href="{{ url_for('category_products', category_id=category.id) }}">
+                                        {{ category.name }}
+                                    </a>
+                                {% endfor %}
+                            {% else %}
+                                <a class="dropdown-item disabled" href="#">暂无分类</a>
+                            {% endif %}
                         </div>
                     </li>
                     <li class="nav-item">
