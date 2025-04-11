@@ -103,6 +103,9 @@ def index():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     """用户注册"""
+    # 获取所有分类用于导航
+    categories = ProductCategory.query.all()
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -145,10 +148,13 @@ def register():
         flash('注册成功，请登录', 'success')
         return redirect(url_for('login'))
     
-    return render_template('register.html')
+    return render_template('register.html', categories=categories)  # 传递分类数据
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # 获取所有分类用于导航
+    categories = ProductCategory.query.all()
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -168,7 +174,7 @@ def login():
         else:
             flash('用户名或密码错误', 'danger')
 
-    return render_template('login.html')
+    return render_template('login.html', categories=categories)  # 传递分类数据
 
 @app.route('/logout')
 def logout():
@@ -246,7 +252,7 @@ def product_detail(product_id):
         
         # 获取产品规格
         specs = {}
-        if product.spec_json:
+        if (product.spec_json):
             try:
                 specs = json.loads(product.spec_json)
             except:
